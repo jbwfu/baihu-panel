@@ -22,6 +22,7 @@ type Controllers struct {
 	Log       *controllers.LogController
 	Terminal  *controllers.TerminalController
 	Settings  *controllers.SettingsController
+	Runtime   *controllers.RuntimeController
 }
 
 func mustSubFS(fsys fs.FS, dir string) fs.FS {
@@ -176,6 +177,18 @@ func Setup(c *Controllers) *gin.Engine {
 				settings.PUT("/site", c.Settings.UpdateSiteSettings)
 				settings.GET("/about", c.Settings.GetAbout)
 				settings.GET("/loginlogs", c.Settings.GetLoginLogs)
+			}
+
+			// Runtime routes (依赖管理)
+			runtime := authorized.Group("/runtime")
+			{
+				runtime.GET("", c.Runtime.GetAvailableRuntimes)
+				runtime.GET("/:type/envs", c.Runtime.ListEnvs)
+				runtime.POST("/:type/envs", c.Runtime.CreateEnv)
+				runtime.DELETE("/:type/envs/:name", c.Runtime.DeleteEnv)
+				runtime.GET("/:type/envs/:name/packages", c.Runtime.ListPackages)
+				runtime.POST("/:type/envs/:name/packages", c.Runtime.InstallPackage)
+				runtime.DELETE("/:type/envs/:name/packages", c.Runtime.UninstallPackage)
 			}
 		}
 	}

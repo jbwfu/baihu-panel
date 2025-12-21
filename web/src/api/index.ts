@@ -170,6 +170,20 @@ export const api = {
       }
       if (json.code !== 200) throw new Error(json.msg || '上传失败')
     }
+  },
+  runtime: {
+    getAvailable: () => request<string[]>('/runtime'),
+    listEnvs: (type: string) => request<RuntimeEnv[]>(`/runtime/${type}/envs`),
+    createEnv: (type: string, name: string, version?: string) =>
+      request(`/runtime/${type}/envs`, { method: 'POST', body: JSON.stringify({ name, version }) }),
+    deleteEnv: (type: string, name: string) =>
+      request(`/runtime/${type}/envs/${name}`, { method: 'DELETE' }),
+    listPackages: (type: string, envName: string) =>
+      request<RuntimePackage[]>(`/runtime/${type}/envs/${envName}/packages`),
+    installPackage: (type: string, envName: string, packageName: string) =>
+      request(`/runtime/${type}/envs/${envName}/packages`, { method: 'POST', body: JSON.stringify({ package: packageName }) }),
+    uninstallPackage: (type: string, envName: string, packageName: string) =>
+      request(`/runtime/${type}/envs/${envName}/packages`, { method: 'DELETE', body: JSON.stringify({ package: packageName }) })
   }
 }
 
@@ -304,4 +318,17 @@ export interface TaskStatsItem {
   task_id: number
   task_name: string
   count: number
+}
+
+export interface RuntimeEnv {
+  name: string
+  path: string
+  version: string
+  active: boolean
+}
+
+export interface RuntimePackage {
+  name: string
+  version: string
+  channel?: string
 }

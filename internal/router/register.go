@@ -38,6 +38,7 @@ func RegisterControllers() *Controllers {
 		Log:       controllers.NewLogController(),
 		Terminal:  controllers.NewTerminalController(),
 		Settings:  controllers.NewSettingsController(userService, loginLogService),
+		Runtime:   controllers.NewRuntimeController(),
 	}
 }
 
