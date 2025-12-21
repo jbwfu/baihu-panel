@@ -18,7 +18,7 @@ func (s *SettingsService) InitSettings() error {
 	for section, keys := range constant.DefaultSettings {
 		for key, value := range keys {
 			var count int64
-			database.DB.Model(&models.Setting{}).Where("section = ? AND key = ?", section, key).Count(&count)
+			database.DB.Model(&models.Setting{}).Where("section = ? AND `key` = ?", section, key).Count(&count)
 			if count == 0 {
 				if err := database.DB.Create(&models.Setting{Section: section, Key: key, Value: value}).Error; err != nil {
 					return err
@@ -36,7 +36,7 @@ func (s *SettingsService) Get(section, key string) string {
 		return cache.GetSiteCache(key)
 	}
 	var setting models.Setting
-	if err := database.DB.Where("section = ? AND key = ?", section, key).First(&setting).Error; err != nil {
+	if err := database.DB.Where("section = ? AND `key` = ?", section, key).First(&setting).Error; err != nil {
 		if def, ok := constant.DefaultSettings[section][key]; ok {
 			return def
 		}
@@ -48,7 +48,7 @@ func (s *SettingsService) Get(section, key string) string {
 // Set 设置单个值
 func (s *SettingsService) Set(section, key, value string) error {
 	var setting models.Setting
-	if database.DB.Where("section = ? AND key = ?", section, key).First(&setting).Error != nil {
+	if database.DB.Where("section = ? AND `key` = ?", section, key).First(&setting).Error != nil {
 		return database.DB.Create(&models.Setting{Section: section, Key: key, Value: value}).Error
 	}
 	return database.DB.Model(&setting).Update("value", value).Error
