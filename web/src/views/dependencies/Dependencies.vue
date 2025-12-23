@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Trash2, Package, Search, RefreshCw, Loader2, Download } from 'lucide-vue-next'
+import { Trash2, Package, Search, RefreshCw, Loader2, Download } from 'lucide-vue-next'
 import { api, type Dependency } from '@/api'
 import { toast } from 'vue-sonner'
 
