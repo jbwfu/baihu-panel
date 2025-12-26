@@ -1,6 +1,8 @@
-# 白虎面板 
+# 白虎面板 [![Hits](https://hits.sh/github.com/engigu/baihu-panel.svg?view=today-total)](https://hits.sh/github.com/engigu/baihu-panel/)
 
 白虎面板是一个轻量级定时任务管理系统，基于`Go`+`Vue3`构建，`docker`或者`docker-compose`，内置`python3`、`nodejs`、`bash`环境，开箱即用。
+
+演示站点(演示站点的服务器比较烂，见谅) [demo](https://baihu-demo-site.qwapi.eu.org/)
 
 ## 项目来由
 
