@@ -12,7 +12,8 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
+  DialogDescription
 } from '@/components/ui/dialog'
 
 const { pageSize } = useSiteSettings()
@@ -169,7 +170,10 @@ onMounted(loadLogs)
     <Dialog v-model:open="ipDialogOpen">
       <DialogContent class="max-w-[90vw] sm:max-w-md">
         <DialogHeader>
-          <DialogTitle class="text-base sm:text-lg">IP 信息 - {{ selectedIp }}</DialogTitle>
+          <DialogTitle>IP 详情</DialogTitle>
+          <DialogDescription>
+            <code class="text-xs bg-muted px-2 py-0.5 rounded">{{ selectedIp }}</code>
+          </DialogDescription>
         </DialogHeader>
         <div v-if="ipGeoLoading" class="flex items-center justify-center py-8">
           <Loader2 class="h-6 w-6 animate-spin text-muted-foreground" />

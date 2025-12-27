@@ -40,24 +40,24 @@ watch(() => props.open, (val) => {
   <Teleport to="body">
     <div
       v-if="open"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4"
       @click.self="close"
     >
-      <div class="bg-background rounded-lg shadow-lg flex flex-col w-[80vw] max-w-5xl h-[85vh]">
-        <div class="flex items-center justify-between px-4 py-3 border-b shrink-0">
-          <div class="flex items-center gap-4">
-            <span class="text-sm font-medium">{{ title }}</span>
-            <div class="relative">
+      <div class="bg-background rounded-lg shadow-lg flex flex-col w-full sm:w-[90vw] md:w-[80vw] max-w-5xl h-[90vh] sm:h-[85vh]">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between px-3 sm:px-4 py-2 sm:py-3 border-b shrink-0 gap-2">
+          <span class="text-sm font-medium truncate">{{ title }}</span>
+          <div class="flex items-center gap-2">
+            <div class="relative flex-1 sm:flex-none">
               <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input v-model="searchKeyword" placeholder="搜索内容..." class="h-8 pl-9 w-64 text-sm" />
+              <Input v-model="searchKeyword" placeholder="搜索内容..." class="h-8 pl-9 w-full sm:w-56 text-sm" />
             </div>
+            <Button variant="ghost" size="icon" class="h-7 w-7 shrink-0" @click="close">
+              <X class="h-4 w-4" />
+            </Button>
           </div>
-          <Button variant="ghost" size="icon" class="h-7 w-7" @click="close">
-            <X class="h-4 w-4" />
-          </Button>
         </div>
         <div class="flex-1 overflow-auto">
-          <pre class="p-4 text-xs font-mono whitespace-pre-wrap break-all" v-html="highlightedContent"></pre>
+          <pre class="p-3 sm:p-4 text-xs font-mono whitespace-pre-wrap break-all" v-html="highlightedContent"></pre>
         </div>
       </div>
     </div>
