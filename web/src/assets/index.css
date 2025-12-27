@@ -202,3 +202,16 @@ input[type="number"]:hover::-webkit-outer-spin-button {
 .dark .custom-scrollbar {
   scrollbar-color: oklch(0.5 0 0 / 40%) transparent;
 }
+
+/* ApexCharts tooltip fix */
+.apexcharts-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+.apexcharts-tooltip-title {
+  display: none !important;
+}

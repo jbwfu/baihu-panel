@@ -159,25 +159,25 @@ const renderLineChart = () => {
         const success = series[1]?.[dataPointIndex] ?? 0
         const failed = series[2]?.[dataPointIndex] ?? 0
         const rate = total > 0 ? ((success / total) * 100).toFixed(1) : '0.0'
-        return `<div class="bg-card text-foreground p-3 rounded-lg shadow-lg border border-border">
-          <div class="font-medium mb-2">${w.globals.categoryLabels[dataPointIndex]}</div>
-          <div class="space-y-1">
-            <div class="flex items-center justify-between gap-4">
-              <span class="flex items-center"><span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span><span class="text-sm text-muted-foreground">总数:</span></span>
-              <span class="text-sm font-medium">${total} 次</span>
+        return `<div class="bg-card text-foreground p-2 rounded-lg shadow-lg border border-border text-xs">
+          <div class="font-medium mb-1.5">${w.globals.categoryLabels[dataPointIndex]}</div>
+          <div class="space-y-0.5">
+            <div class="flex items-center justify-between gap-3">
+              <span class="flex items-center"><span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span><span class="text-muted-foreground">总数:</span></span>
+              <span class="font-medium">${total} 次</span>
             </div>
-            <div class="flex items-center justify-between gap-4">
-              <span class="flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span><span class="text-sm text-muted-foreground">成功:</span></span>
-              <span class="text-sm font-medium">${success} 次</span>
+            <div class="flex items-center justify-between gap-3">
+              <span class="flex items-center"><span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span><span class="text-muted-foreground">成功:</span></span>
+              <span class="font-medium">${success} 次</span>
             </div>
-            <div class="flex items-center justify-between gap-4">
-              <span class="flex items-center"><span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span><span class="text-sm text-muted-foreground">失败:</span></span>
-              <span class="text-sm font-medium">${failed} 次</span>
+            <div class="flex items-center justify-between gap-3">
+              <span class="flex items-center"><span class="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5"></span><span class="text-muted-foreground">失败:</span></span>
+              <span class="font-medium">${failed} 次</span>
             </div>
-            <div class="border-t border-border pt-1 mt-2">
+            <div class="border-t border-border pt-1 mt-1">
               <div class="flex items-center justify-between">
-                <span class="text-sm text-muted-foreground">成功率:</span>
-                <span class="text-sm font-medium">${rate}%</span>
+                <span class="text-muted-foreground">成功率:</span>
+                <span class="font-medium">${rate}%</span>
               </div>
             </div>
           </div>
