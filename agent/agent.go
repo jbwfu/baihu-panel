@@ -483,6 +483,14 @@ func (a *Agent) executeTask(task *AgentTask) {
 
 	if task.WorkDir != "" {
 		cmd.Dir = task.WorkDir
+		log.Infof("任务 #%d 工作目录: %s", task.ID, task.WorkDir)
+		
+		// 验证工作目录是否存在
+		if _, err := os.Stat(task.WorkDir); os.IsNotExist(err) {
+			log.Warnf("任务 #%d 工作目录不存在: %s", task.ID, task.WorkDir)
+		}
+	} else {
+		log.Infof("任务 #%d 使用默认工作目录", task.ID)
 	}
 
 	var stdout, stderr bytes.Buffer
@@ -498,7 +506,19 @@ func (a *Agent) executeTask(task *AgentTask) {
 
 	if err != nil {
 		result.Status = "failed"
-		result.Output += "\n[ERROR]\n" + stderr.String() + "\n" + err.Error()
+		errMsg := stderr.String()
+		if errMsg == "" {
+			errMsg = err.Error()
+		} else {
+			errMsg = stderr.String() + "\n" + err.Error()
+		}
+		
+		// 如果是工作目录错误，添加更明确的提示
+		if task.WorkDir != "" && strings.Contains(err.Error(), "chdir") {
+			errMsg = fmt.Sprintf("[工作目录错误] 无法切换到目录: %s\n%s", task.WorkDir, errMsg)
+		}
+		
+		result.Output += "\n[ERROR]\n" + errMsg
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		} else {
