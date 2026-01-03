@@ -262,6 +262,8 @@ func (a *Agent) handleWSMessage(msg *WSMessage) {
 	case WSTypeEnabled:
 		log.Info("Agent 已被启用，主动拉取任务")
 		a.fetchTasks()
+	case "execute":
+		a.handleExecute(msg.Data)
 	}
 }
 
@@ -318,6 +320,31 @@ func (a *Agent) handleTasks(data json.RawMessage) {
 	}
 
 	a.updateTasks(resp.Tasks)
+}
+
+func (a *Agent) handleExecute(data json.RawMessage) {
+	var req struct {
+		TaskID uint `json:"task_id"`
+	}
+	if err := json.Unmarshal(data, &req); err != nil {
+		log.Errorf("解析立即执行请求失败: %v", err)
+		return
+	}
+
+	log.Infof("收到立即执行命令: 任务 #%d", req.TaskID)
+
+	// 查找任务
+	a.mu.RLock()
+	task, exists := a.tasks[req.TaskID]
+	a.mu.RUnlock()
+
+	if !exists {
+		log.Warnf("任务 #%d 不存在，无法执行", req.TaskID)
+		return
+	}
+
+	// 立即执行任务
+	go a.executeTask(task)
 }
 
 func (a *Agent) sendWSMessage(msgType string, data interface{}) error {
@@ -496,6 +523,15 @@ func (a *Agent) executeTask(task *AgentTask) {
 		cmd = exec.CommandContext(ctx, "sh", "-c", finalCommand)
 	}
 
+	// 处理环境变量
+	if task.Envs != "" {
+		envVars := a.parseEnvVars(task.Envs)
+		if len(envVars) > 0 {
+			cmd.Env = append(os.Environ(), envVars...)
+			log.Infof("任务 #%d 设置了 %d 个环境变量", task.ID, len(envVars))
+		}
+	}
+
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -534,6 +570,28 @@ func (a *Agent) executeTask(task *AgentTask) {
 
 	a.sendTaskResult(result)
 	log.Infof("任务 #%d 执行完成 (%s)", result.TaskID, result.Status)
+}
+
+// parseEnvVars 解析环境变量字符串 "KEY1=VALUE1,KEY2=VALUE2"
+func (a *Agent) parseEnvVars(envStr string) []string {
+	if envStr == "" {
+		return nil
+	}
+
+	pairs := strings.Split(envStr, ",")
+	result := make([]string, 0, len(pairs))
+	
+	for _, pair := range pairs {
+		if pair == "" {
+			continue
+		}
+		// 解码特殊字符
+		pair = strings.ReplaceAll(pair, "{{COMMA}}", ",")
+		pair = strings.ReplaceAll(pair, "{{EQUAL}}", "=")
+		result = append(result, pair)
+	}
+	
+	return result
 }
 
 func (a *Agent) doRequest(method, path string, body interface{}) (*http.Response, error) {

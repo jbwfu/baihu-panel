@@ -2,7 +2,6 @@ package services
 
 import (
 	"baihu/internal/constant"
-	"baihu/internal/database"
 	"baihu/internal/logger"
 	"baihu/internal/models"
 	"baihu/internal/utils"
@@ -28,9 +27,6 @@ type ExecutionResult struct {
 	End     time.Time
 }
 
-// ExecutionCallback 任务执行完成后的回调函数类型
-type ExecutionCallback func(taskID uint, command string, result *ExecutionResult)
-
 // taskJob 任务队列项
 type taskJob struct {
 	taskID int
@@ -38,12 +34,12 @@ type taskJob struct {
 
 // ExecutorService handles task execution
 type ExecutorService struct {
-	taskService  *TaskService
-	results      []ExecutionResult
-	runningTasks map[int]bool
-	callbacks    []ExecutionCallback
-	mu           sync.RWMutex
-	resultsMu    sync.RWMutex
+	taskService          *TaskService
+	taskExecutionService *TaskExecutionService
+	results              []ExecutionResult
+	runningTasks         map[int]bool
+	mu                   sync.RWMutex
+	resultsMu            sync.RWMutex
 
 	// 任务队列和 worker pool
 	taskQueue   chan taskJob
@@ -64,20 +60,15 @@ func NewExecutorService(taskService *TaskService) *ExecutorService {
 	logger.Infof("[Executor] 配置: workers=%d, queue=%d, rate=%dms", workerCount, queueSize, rateInterval)
 
 	es := &ExecutorService{
-		taskService:  taskService,
-		results:      make([]ExecutionResult, 0, 100),
-		runningTasks: make(map[int]bool),
-		callbacks:    make([]ExecutionCallback, 0),
-		taskQueue:    make(chan taskJob, queueSize),
-		workerCount:  workerCount,
-		rateLimiter:  time.Tick(time.Duration(rateInterval) * time.Millisecond),
-		stopCh:       make(chan struct{}),
+		taskService:          taskService,
+		taskExecutionService: NewTaskExecutionService(),
+		results:              make([]ExecutionResult, 0, 100),
+		runningTasks:         make(map[int]bool),
+		taskQueue:            make(chan taskJob, queueSize),
+		workerCount:          workerCount,
+		rateLimiter:          time.Tick(time.Duration(rateInterval) * time.Millisecond),
+		stopCh:               make(chan struct{}),
 	}
-
-	// 注册默认回调
-	es.RegisterCallback(es.saveTaskLogCallback)
-	es.RegisterCallback(es.updateStatsCallback)
-	es.RegisterCallback(es.cleanLogsCallback)
 
 	// 启动 worker pool
 	es.startWorkers()
@@ -156,118 +147,6 @@ func (es *ExecutorService) Reload() {
 	logger.Infof("[Executor] 配置已重载: workers=%d, queue=%d, rate=%dms", workerCount, queueSize, rateInterval)
 }
 
-// RegisterCallback 注册执行完成回调
-func (es *ExecutorService) RegisterCallback(cb ExecutionCallback) {
-	es.mu.Lock()
-	es.callbacks = append(es.callbacks, cb)
-	es.mu.Unlock()
-}
-
-// executeCallbacksAsync 异步执行所有回调
-func (es *ExecutorService) executeCallbacksAsync(taskID uint, command string, result *ExecutionResult) {
-	es.mu.RLock()
-	callbacks := make([]ExecutionCallback, len(es.callbacks))
-	copy(callbacks, es.callbacks)
-	es.mu.RUnlock()
-
-	go func() {
-		for _, cb := range callbacks {
-			cb(taskID, command, result)
-		}
-	}()
-}
-
-// saveTaskLogCallback 保存任务日志的回调（异步执行，压缩在此处进行）
-func (es *ExecutorService) saveTaskLogCallback(taskID uint, command string, result *ExecutionResult) {
-	output := result.Output
-	if result.Error != "" {
-		output += "\n[ERROR]\n" + result.Error
-	}
-
-	compressed, err := utils.CompressToBase64(output)
-	if err != nil {
-		logger.Errorf("[Executor] 压缩日志失败: %v", err)
-		compressed = ""
-	}
-
-	status := "success"
-	if !result.Success {
-		status = "failed"
-	}
-
-	startTime := models.LocalTime(result.Start)
-	endTime := models.LocalTime(result.End)
-
-	taskLog := &models.TaskLog{
-		TaskID:    taskID,
-		Command:   command,
-		Output:    compressed,
-		Status:    status,
-		Duration:  result.End.Sub(result.Start).Milliseconds(),
-		StartTime: &startTime,
-		EndTime:   &endTime,
-	}
-
-	if err := database.DB.Create(taskLog).Error; err != nil {
-		logger.Errorf("[Executor] 保存任务日志失败: %v", err)
-	}
-}
-
-// updateStatsCallback 更新统计数据的回调
-func (es *ExecutorService) updateStatsCallback(taskID uint, _ string, result *ExecutionResult) {
-	status := "success"
-	if !result.Success {
-		status = "failed"
-	}
-	sendStatsService := NewSendStatsService()
-	if err := sendStatsService.IncrementStats(taskID, status); err != nil {
-		logger.Errorf("[Executor] 更新统计失败: %v", err)
-	}
-}
-
-// CleanConfig 清理配置结构
-type CleanConfig struct {
-	Type string `json:"type"` // "day" 或 "count"
-	Keep int    `json:"keep"` // 保留天数或条数
-}
-
-// cleanLogsCallback 清理日志的回调
-func (es *ExecutorService) cleanLogsCallback(taskID uint, _ string, _ *ExecutionResult) {
-	task := es.taskService.GetTaskByID(int(taskID))
-	if task == nil || task.CleanConfig == "" {
-		return
-	}
-
-	var config CleanConfig
-	if err := json.Unmarshal([]byte(task.CleanConfig), &config); err != nil {
-		logger.Errorf("[Executor] 解析清理配置失败: %v", err)
-		return
-	}
-
-	if config.Keep <= 0 {
-		return
-	}
-
-	var deleted int64
-	switch config.Type {
-	case "day":
-		cutoff := time.Now().AddDate(0, 0, -config.Keep)
-		result := database.DB.Where("task_id = ? AND created_at < ?", taskID, cutoff).Delete(&models.TaskLog{})
-		deleted = result.RowsAffected
-	case "count":
-		var boundaryLog models.TaskLog
-		err := database.DB.Where("task_id = ?", taskID).Order("id DESC").Offset(config.Keep - 1).Limit(1).First(&boundaryLog).Error
-		if err == nil {
-			result := database.DB.Where("task_id = ? AND id < ?", taskID, boundaryLog.ID).Delete(&models.TaskLog{})
-			deleted = result.RowsAffected
-		}
-	}
-
-	if deleted > 0 {
-		//logger.Infof("Cleaned %d logs for task %d", deleted, taskID)
-	}
-}
-
 // EnqueueTask 将任务加入队列（供 cron 调度器调用）
 func (es *ExecutorService) EnqueueTask(taskID int) {
 	select {
@@ -305,22 +184,38 @@ func (es *ExecutorService) executeTaskInternal(taskID int) *ExecutionResult {
 
 	var result *ExecutionResult
 
-	// 根据任务类型执行不同逻辑
-	if task.Type == "repo" {
-		result = es.executeRepoTask(task)
-	} else {
-		result = es.executeNormalTask(task)
+	// 使用统一的任务执行服务
+	req := &TaskExecutionRequest{
+		TaskID: uint(taskID),
+		Task:   task,
 	}
 
-	result.TaskID = taskID
+	start := time.Now()
+	err := es.taskExecutionService.ExecuteTask(req)
+	end := time.Now()
+
+	if err != nil {
+		result = &ExecutionResult{
+			TaskID:  taskID,
+			Success: false,
+			Error:   err.Error(),
+			Start:   start,
+			End:     end,
+		}
+	} else {
+		result = &ExecutionResult{
+			TaskID:  taskID,
+			Success: true,
+			Output:  "任务已提交执行",
+			Start:   start,
+			End:     end,
+		}
+	}
 
 	// 标记任务结束
 	es.mu.Lock()
 	delete(es.runningTasks, taskID)
 	es.mu.Unlock()
-
-	// 异步执行回调（日志压缩、统计更新、日志清理）
-	es.executeCallbacksAsync(uint(taskID), task.Command, result)
 
 	return result
 }

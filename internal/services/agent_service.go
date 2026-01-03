@@ -5,7 +5,6 @@ import (
 	"baihu/internal/database"
 	"baihu/internal/logger"
 	"baihu/internal/models"
-	"baihu/internal/utils"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -306,6 +305,9 @@ func (s *AgentService) GetTasks(agentID uint) []models.AgentTask {
 
 	result := make([]models.AgentTask, len(tasks))
 	for i, task := range tasks {
+		// 将环境变量 ID 转换为实际的环境变量键值对
+		envVarsStr := s.buildEnvVarsString(task.Envs)
+		
 		result[i] = models.AgentTask{
 			ID:       task.ID,
 			Name:     task.Name,
@@ -313,7 +315,7 @@ func (s *AgentService) GetTasks(agentID uint) []models.AgentTask {
 			Schedule: task.Schedule,
 			Timeout:  task.Timeout,
 			WorkDir:  task.WorkDir,
-			Envs:     task.Envs,
+			Envs:     envVarsStr, // 传递 "KEY1=VALUE1,KEY2=VALUE2" 格式
 			Enabled:  task.Enabled,
 		}
 	}
@@ -321,48 +323,37 @@ func (s *AgentService) GetTasks(agentID uint) []models.AgentTask {
 	return result
 }
 
+// buildEnvVarsString 将环境变量 ID 列表转换为键值对字符串
+func (s *AgentService) buildEnvVarsString(envIDs string) string {
+	if envIDs == "" {
+		return ""
+	}
+
+	var envVars []models.EnvironmentVariable
+	ids := strings.Split(envIDs, ",")
+	database.DB.Where("id IN ?", ids).Find(&envVars)
+
+	if len(envVars) == 0 {
+		return ""
+	}
+
+	// 构建 "KEY1=VALUE1,KEY2=VALUE2" 格式
+	pairs := make([]string, 0, len(envVars))
+	for _, env := range envVars {
+		// 对值进行转义，避免特殊字符问题
+		encodedValue := strings.ReplaceAll(env.Value, ",", "{{COMMA}}")
+		encodedValue = strings.ReplaceAll(encodedValue, "=", "{{EQUAL}}")
+		pairs = append(pairs, fmt.Sprintf("%s=%s", env.Name, encodedValue))
+	}
+	return strings.Join(pairs, ",")
+}
+
 // ReportResult Agent 上报执行结果
 func (s *AgentService) ReportResult(result *models.AgentTaskResult) error {
-	// 压缩输出
-	compressed, err := utils.CompressToBase64(result.Output)
-	if err != nil {
-		logger.Errorf("[Agent] 压缩日志失败: %v", err)
-		compressed = ""
-	}
-
-	taskLog := &models.TaskLog{
-		TaskID:   result.TaskID,
-		AgentID:  &result.AgentID,
-		Command:  result.Command,
-		Output:   compressed,
-		Status:   result.Status,
-		Duration: result.Duration,
-		ExitCode: result.ExitCode,
-	}
-
-	// 处理开始和结束时间
-	if result.StartTime > 0 {
-		startTime := models.LocalTime(time.Unix(result.StartTime, 0))
-		taskLog.StartTime = &startTime
-	}
-	if result.EndTime > 0 {
-		endTime := models.LocalTime(time.Unix(result.EndTime, 0))
-		taskLog.EndTime = &endTime
-	}
-
-	if err := database.DB.Create(taskLog).Error; err != nil {
-		return err
-	}
-
-	// 更新任务的 last_run
-	database.DB.Model(&models.Task{}).Where("id = ?", result.TaskID).Update("last_run", time.Now())
-
-	// 更新统计
-	sendStatsService := NewSendStatsService()
-	sendStatsService.IncrementStats(result.TaskID, result.Status)
-
-	logger.Infof("[Agent] 收到任务结果 #%d (agent=%d, status=%s)", result.TaskID, result.AgentID, result.Status)
-	return nil
+	taskExecutionService := NewTaskExecutionService()
+	
+	// 使用统一的结果处理流程
+	return taskExecutionService.ProcessAgentResult(result)
 }
 
 // UpdateOfflineAgents 更新离线 Agent 状态（超过 2 分钟无心跳）
