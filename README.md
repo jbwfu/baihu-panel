@@ -343,8 +343,6 @@ table_prefix = baihu_
 创建 `docker-compose.yml` 文件：
 
 ```yaml
-version: "3.7"
-
 services:
   # 白虎面板
   baihu:
@@ -397,8 +395,6 @@ services:
 创建 `docker-compose.yml` 文件：
 
 ```yaml
-version: "3.7"
-
 services:
   # 白虎面板
   baihu:
