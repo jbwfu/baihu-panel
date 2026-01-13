@@ -8,6 +8,7 @@ import ApexCharts from 'apexcharts'
 
 const router = useRouter()
 const stats = ref<Stats>({ tasks: 0, today_execs: 0, envs: 0, logs: 0, scheduled: 0, running: 0 })
+const displayStats = ref<Stats>({ tasks: 0, today_execs: 0, envs: 0, logs: 0, scheduled: 0, running: 0 })
 const sendStats = ref<DailyStats[]>([])
 const taskStats = ref<TaskStatsItem[]>([])
 const chartsLoaded = ref(false)
@@ -30,6 +31,42 @@ const statItems = [
 ]
 
 const isDark = ref(document.documentElement.classList.contains('dark'))
+
+// 数字滚动动画
+function animateNumber(key: keyof Stats, target: number) {
+  const start = displayStats.value[key]
+  const duration = 800 // 动画持续时间
+  const startTime = performance.now()
+  
+  function update(currentTime: number) {
+    const elapsed = currentTime - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    
+    // 使用 easeOutCubic 缓动函数
+    const easeProgress = 1 - Math.pow(1 - progress, 3)
+    
+    displayStats.value[key] = Math.round(start + (target - start) * easeProgress)
+    
+    if (progress < 1) {
+      requestAnimationFrame(update)
+    } else {
+      displayStats.value[key] = target
+    }
+  }
+  
+  requestAnimationFrame(update)
+}
+
+// 更新统计数据并触发动画
+function updateStats(newStats: Stats) {
+  Object.keys(newStats).forEach((key) => {
+    const statKey = key as keyof Stats
+    if (newStats[statKey] !== stats.value[statKey]) {
+      animateNumber(statKey, newStats[statKey])
+    }
+  })
+  stats.value = newStats
+}
 
 function getTextColor() {
   return isDark.value ? '#94a3b8' : '#64748b'
@@ -364,7 +401,7 @@ onMounted(async () => {
       api.dashboard.sendStats(chartDays.value),
       api.dashboard.taskStats(chartDays.value)
     ])
-    stats.value = statsData
+    updateStats(statsData)
     sendStats.value = sendStatsData
     taskStats.value = taskStatsData
     
@@ -416,7 +453,7 @@ onUnmounted(() => {
           <component :is="item.icon" class="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div class="text-xl sm:text-2xl font-bold">{{ stats[item.key as keyof Stats] }}</div>
+          <div class="text-xl sm:text-2xl font-bold">{{ displayStats[item.key as keyof Stats] }}</div>
         </CardContent>
       </Card>
     </div>

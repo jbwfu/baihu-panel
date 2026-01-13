@@ -19,6 +19,18 @@ export default defineConfig({
       }
     }
   },
-  // 支持通过环境变量设置 base URL（开发时测试用）
-  base: process.env.VITE_BASE_URL || '/'
+  build: {
+    // 使用相对路径，这样可以部署在任何路径下
+    // 资源引用会使用 ./assets/ 而不是 /assets/
+    rollupOptions: {
+      output: {
+        // 确保资源使用相对路径
+        assetFileNames: 'assets/[name]-[hash][extname]',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js'
+      }
+    }
+  },
+  // 使用相对路径作为 base，这样资源会相对于 HTML 文件加载
+  base: './'
 })
