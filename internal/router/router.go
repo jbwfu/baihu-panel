@@ -229,13 +229,6 @@ func Setup(c *Controllers) *gin.Engine {
 		}
 	}
 
-	// 如果配置了前缀，添加重定向：/prefix -> /prefix/
-	if urlPrefix != "" {
-		router.GET(urlPrefix, func(ctx *gin.Context) {
-			ctx.Redirect(301, urlPrefix+"/")
-		})
-	}
-
 	// SPA fallback - serve index.html (no cache for HTML)
 	// 必须在最后注册，作为兜底路由
 	router.NoRoute(func(ctx *gin.Context) {
