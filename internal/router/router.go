@@ -217,16 +217,16 @@ func Setup(c *Controllers) *gin.Engine {
 				agents.DELETE("/tokens/:id", c.Agent.DeleteToken)
 			}
 		}
+	}
 
-		// Agent API（供远程 Agent 调用）
-		agentAPI := api.Group("/agent")
-		{
-			agentAPI.POST("/heartbeat", c.Agent.Heartbeat)
-			agentAPI.GET("/tasks", c.Agent.GetTasks)
-			agentAPI.POST("/report", c.Agent.ReportResult)
-			agentAPI.GET("/download", c.Agent.Download)
-			agentAPI.GET("/ws", c.Agent.WSConnect) // WebSocket 连接
-		}
+	// Agent API（供远程 Agent 调用，不使用 /v1 版本号）
+	agentAPI := root.Group("/api/agent")
+	{
+		agentAPI.POST("/heartbeat", c.Agent.Heartbeat)
+		agentAPI.GET("/tasks", c.Agent.GetTasks)
+		agentAPI.POST("/report", c.Agent.ReportResult)
+		agentAPI.GET("/download", c.Agent.Download)
+		agentAPI.GET("/ws", c.Agent.WSConnect) // WebSocket 连接
 	}
 
 	// SPA fallback - serve index.html (no cache for HTML)
@@ -237,19 +237,19 @@ func Setup(c *Controllers) *gin.Engine {
 			ctx.Status(404)
 			return
 		}
-		
+
 		data, err := static.ReadFile("index.html")
 		if err != nil {
 			ctx.String(500, "index.html not found")
 			return
 		}
-		
+
 		html := string(data)
-		
+
 		// 注入配置变量供前端使用（API 调用和路由）
 		configScript := `<script>window.__BASE_URL__ = "` + urlPrefix + `"; window.__API_VERSION__ = "/api/v1";</script>`
 		html = strings.Replace(html, "</head>", configScript+"</head>", 1)
-		
+
 		ctx.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 		ctx.Data(200, "text/html; charset=utf-8", []byte(html))
 	})

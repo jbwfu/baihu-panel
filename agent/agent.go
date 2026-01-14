@@ -202,9 +202,19 @@ func (a *Agent) connectWS() error {
 	wsURL = strings.Replace(wsURL, "https://", "wss://", 1)
 	wsURL = fmt.Sprintf("%s/api/agent/ws?token=%s&machine_id=%s", wsURL, url.QueryEscape(a.config.Token), url.QueryEscape(a.machineID))
 
+	log.Infof("正在连接 WebSocket: %s", wsURL)
+	log.Infof("Token: %s..., MachineID: %s...", a.config.Token[:8], a.machineID[:16])
+
 	dialer := websocket.Dialer{HandshakeTimeout: 10 * time.Second}
-	conn, _, err := dialer.Dial(wsURL, nil)
+	conn, resp, err := dialer.Dial(wsURL, nil)
 	if err != nil {
+		if resp != nil {
+			bodyBytes, _ := io.ReadAll(resp.Body)
+			log.Errorf("WebSocket 握手失败: HTTP %d, Body: %s", resp.StatusCode, string(bodyBytes))
+			resp.Body.Close()
+		} else {
+			log.Errorf("WebSocket 连接失败: %v", err)
+		}
 		return err
 	}
 
