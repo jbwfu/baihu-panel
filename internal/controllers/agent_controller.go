@@ -337,7 +337,18 @@ func (c *AgentController) ForceUpdate(ctx *gin.Context) {
 
 // WSConnect Agent WebSocket 连接
 func (c *AgentController) WSConnect(ctx *gin.Context) {
+	// 添加 panic 恢复
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Errorf("[AgentWS] WSConnect panic: %v", r)
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "服务器内部错误"})
+		}
+	}()
+
 	ip := ctx.ClientIP()
+
+	// 打印请求信息用于调试
+	logger.Infof("[AgentWS] 收到连接请求: IP=%s, URL=%s", ip, ctx.Request.URL.String())
 
 	// 检查 IP 限流
 	if allowed, reason := c.wsManager.CheckRateLimit(ip); !allowed {
@@ -349,36 +360,45 @@ func (c *AgentController) WSConnect(ctx *gin.Context) {
 	token := ctx.Query("token")
 	if token == "" {
 		c.wsManager.RecordConnectFail(ip)
+		logger.Warnf("[AgentWS] 连接失败: 缺少 token, IP=%s", ip)
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "缺少 token"})
 		return
 	}
 
 	machineID := ctx.Query("machine_id")
+	logger.Infof("[AgentWS] Token: %s..., MachineID: %s...", token[:8], machineID[:16])
+
 	isNewAgent := false
 
 	// 先尝试用 token 查找已有 Agent
 	agent := c.agentService.GetByToken(token)
+	logger.Infof("[AgentWS] GetByToken 结果: agent=%v", agent != nil)
 
 	// 如果没找到，尝试用令牌注册（会检查 machine_id 是否已存在）
 	if agent == nil {
+		logger.Infof("[AgentWS] 尝试注册新 Agent")
 		var err error
 		agent, isNewAgent, err = c.agentService.RegisterByToken(token, machineID, ip)
 		if err != nil {
 			c.wsManager.RecordConnectFail(ip)
+			logger.Warnf("[AgentWS] 注册失败: %v, IP=%s, token=%s", err, ip, token[:8]+"...")
 			ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
+		logger.Infof("[AgentWS] 注册成功: Agent #%d, isNew=%v", agent.ID, isNewAgent)
 	}
 
 	if !agent.Enabled {
 		c.wsManager.RecordConnectFail(ip)
+		logger.Warnf("[AgentWS] Agent #%d 已禁用, IP=%s", agent.ID, ip)
 		ctx.JSON(http.StatusForbidden, gin.H{"error": "Agent 已禁用"})
 		return
 	}
 
+	logger.Infof("[AgentWS] 准备升级连接: Agent #%d, IP=%s", agent.ID, ip)
 	conn, err := agentUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
-		logger.Errorf("[AgentWS] 升级连接失败: %v", err)
+		logger.Errorf("[AgentWS] 升级连接失败: %v, Agent #%d, IP=%s", err, agent.ID, ip)
 		return
 	}
 
@@ -398,6 +418,8 @@ func (c *AgentController) WSConnect(ctx *gin.Context) {
 		"is_new_agent": isNewAgent,
 		"machine_id":   machineID,
 	})
+
+	logger.Infof("[AgentWS] Agent #%d 连接成功", agent.ID)
 
 	// 启动读写协程
 	go c.wsWritePump(ac)
