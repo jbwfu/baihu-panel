@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { resetAuthCache } from '@/router'
 import { LayoutDashboard, ListTodo, FileCode, Settings, LogOut, ScrollText, Terminal, Variable, KeyRound, Package, Menu, X, Server } from 'lucide-vue-next'
@@ -46,6 +46,10 @@ const cachedSentence = loadSentenceFromCache()
 const sentence = ref(cachedSentence || '欢迎使用白虎面板')
 const { siteSettings, loadSettings } = useSiteSettings()
 const mobileMenuOpen = ref(false)
+const sentenceContent = computed(() => {
+  const match = sentence.value.match(/^"(.+)"—— /)
+  return match ? match[1] : sentence.value
+})
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: '数据仪表', exact: true },
@@ -140,7 +144,10 @@ onMounted(() => {
           <Button variant="ghost" size="icon" class="h-8 w-8 lg:hidden" @click="mobileMenuOpen = true">
             <Menu class="h-5 w-5" />
           </Button>
-          <span class="text-[10px] sm:text-sm text-muted-foreground truncate flex-1 min-w-0 mr-4" :title="sentence">{{ sentence }}</span>
+          <span class="text-sm text-muted-foreground truncate flex-1 min-w-0 mr-4" :title="sentence">
+            <span class="hidden sm:inline">{{ sentence }}</span>
+            <span class="sm:hidden">{{ sentenceContent }}</span>
+          </span>
         </div>
         <ThemeToggle />
       </div>
