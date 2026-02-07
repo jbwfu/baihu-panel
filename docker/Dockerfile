@@ -73,12 +73,16 @@ WORKDIR /app
 # Copy build info
 COPY --from=build-info /build-info /build-info
 
-# Copy agent source and config example
+# Go mod files
+COPY go.mod go.sum ./
+RUN go env -w GOPROXY=https://goproxy.cn,direct && go mod download
+
+# Copy source needed for agent
+COPY internal/ ./internal/
 COPY agent/ ./agent/
 
-# Download dependencies
+# Build agent for all platforms and package as tar.gz
 WORKDIR /app/agent
-RUN go env -w GOPROXY=https://goproxy.cn,direct && go mod download
 
 # Build agent for all platforms and package as tar.gz
 RUN VERSION_VAL=$(cat /build-info/version.txt) && \
