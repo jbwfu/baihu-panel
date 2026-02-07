@@ -156,7 +156,7 @@ onMounted(loadDeps)
       <TabsList>
         <TabsTrigger value="py">Python</TabsTrigger>
         <TabsTrigger value="node">Node.js</TabsTrigger>
-        <TabsTrigger value="system">Debian</TabsTrigger>
+        <TabsTrigger value="system">System</TabsTrigger>
       </TabsList>
 
       <!-- 系统依赖提示 -->
@@ -164,17 +164,25 @@ onMounted(loadDeps)
         <div class="rounded-lg border bg-card p-4 sm:p-6">
           <div class="flex items-center gap-3 mb-3">
             <AlertTriangle class="h-5 w-5 text-amber-500 shrink-0" />
-            <h3 class="font-medium">系统依赖 (Debian)</h3>
+            <h3 class="font-medium">系统依赖 (System Dependencies)</h3>
           </div>
           <div class="space-y-3 text-sm text-muted-foreground">
             <p>
-              系统依赖需要通过终端使用 <code class="bg-muted px-1.5 py-0.5 rounded text-xs">apt-get install</code> 命令安装。或者使用自定义的bash脚本安装。
+              系统依赖需要通过终端使用包管理器安装。
             </p>
+            <ul class="list-disc list-inside space-y-1 ml-1">
+              <li>Debian/Ubuntu: 使用 <code class="bg-muted px-1.5 py-0.5 rounded text-xs">apt-get install</code></li>
+              <li>Alpine: 使用 <code class="bg-muted px-1.5 py-0.5 rounded text-xs">apk add</code></li>
+            </ul>
             <p>
               注意：Docker 容器重新创建后，手动安装的系统依赖会丢失。如需持久化，请在 Dockerfile 中添加依赖或使用自定义镜像。
             </p>
-            <code class="block bg-muted px-3 py-2 rounded text-xs font-mono">
-              apt-get update && apt-get install -y &lt;package-name&gt;
+            <code class="block bg-muted px-3 py-2 rounded text-xs font-mono whitespace-pre">
+# Debian / Ubuntu
+apt-get update && apt-get install -y &lt;package-name&gt;
+
+# Alpine
+apk add &lt;package-name&gt;
             </code>
           </div>
         </div>
