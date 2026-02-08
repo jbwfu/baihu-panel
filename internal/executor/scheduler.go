@@ -10,6 +10,24 @@ import (
 	"time"
 )
 
+// safeBuffer 一个线程安全的字节缓冲区，用于合并 stdout 和 stderr
+type safeBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (s *safeBuffer) Write(p []byte) (n int, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.buf.Write(p)
+}
+
+func (s *safeBuffer) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.buf.String()
+}
+
 // SchedulerConfig 调度器配置
 type SchedulerConfig struct {
 	WorkerCount  int           // Worker 数量
@@ -319,20 +337,20 @@ func (s *Scheduler) executeTask(req *ExecutionRequest) (*ExecutionResult, error)
 		}
 	}
 
-	// 2. 准备输出缓冲区
-	var stdoutBuf, stderrBuf bytes.Buffer
+	// 2. 准备输出缓冲区（使用合并缓冲区保证顺序）
+	var combinedBuf safeBuffer
 	var stdoutWriter, stderrWriter io.Writer
 
 	if stdout != nil {
-		stdoutWriter = io.MultiWriter(&stdoutBuf, stdout)
+		stdoutWriter = io.MultiWriter(&combinedBuf, stdout)
 	} else {
-		stdoutWriter = &stdoutBuf
+		stdoutWriter = &combinedBuf
 	}
 
 	if stderr != nil {
-		stderrWriter = io.MultiWriter(&stderrBuf, stderr)
+		stderrWriter = io.MultiWriter(&combinedBuf, stderr)
 	} else {
-		stderrWriter = &stderrBuf
+		stderrWriter = &combinedBuf
 	}
 
 	// 3. 实际开始执行事件 (经过队列和速率限制之后)
@@ -369,7 +387,7 @@ func (s *Scheduler) executeTask(req *ExecutionRequest) (*ExecutionResult, error)
 
 	if execResult != nil {
 		result.Success = execResult.Status == "success"
-		result.Output = stdoutBuf.String()
+		result.Output = combinedBuf.String()
 		result.Status = execResult.Status
 		result.Duration = execResult.Duration
 		result.ExitCode = execResult.ExitCode
@@ -381,17 +399,11 @@ func (s *Scheduler) executeTask(req *ExecutionRequest) (*ExecutionResult, error)
 		result.StartTime = start
 		result.EndTime = time.Now()
 		result.Duration = result.EndTime.Sub(result.StartTime).Milliseconds()
+		result.Output = combinedBuf.String()
 	}
 
 	if execErr != nil {
 		result.Error = execErr.Error()
-		if result.Output == "" {
-			result.Output = execErr.Error()
-		}
-		errOutput := stderrBuf.String()
-		if errOutput != "" {
-			result.Output += "\n[ERROR]\n" + errOutput
-		}
 		if ctx.Err() == context.Canceled {
 			result.Status = "cancelled"
 		} else if ctx.Err() == context.DeadlineExceeded {
@@ -401,10 +413,12 @@ func (s *Scheduler) executeTask(req *ExecutionRequest) (*ExecutionResult, error)
 
 	// 6. 执行后事件
 	if s.handler != nil {
-		if execErr != nil {
-			s.handler.OnTaskFailed(req, execErr)
-		} else {
+		if execResult != nil {
+			// 只要有执行结果（即使执行失败），都认为是任务完成了（包含输出）
 			s.handler.OnTaskCompleted(req, result)
+		} else if execErr != nil {
+			// 只有在完全没有结果的情况下（如无法启动、Panic等），才认为是任务失败
+			s.handler.OnTaskFailed(req, execErr)
 		}
 	}
 

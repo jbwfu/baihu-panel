@@ -36,6 +36,7 @@ type Request struct {
 // Result 任务执行结果
 type Result struct {
 	Output    string
+	Error     string
 	Status    string // success, failed
 	Duration  int64  // 毫秒
 	ExitCode  int
@@ -160,6 +161,7 @@ func ExecuteWithHooks(ctx context.Context, req Request, stdout, stderr io.Writer
 
 	if err != nil {
 		result.Status = "failed"
+		result.Error = err.Error()
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		} else {

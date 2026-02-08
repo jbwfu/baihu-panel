@@ -319,6 +319,7 @@ export interface TaskLog {
   command: string
   status: string
   duration: number
+  error: string | null
   start_time: string | null
   end_time: string | null
   created_at: string
@@ -336,6 +337,7 @@ export interface LogDetail {
   task_id: number
   command: string
   output: string
+  error: string | null
   status: string
   duration: number
   start_time: string | null

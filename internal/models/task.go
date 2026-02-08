@@ -85,6 +85,7 @@ type TaskLog struct {
 	AgentID   *uint      `json:"agent_id" gorm:"index"` // Agent ID，为空表示本地执行
 	Command   string     `json:"command" gorm:"type:text"`
 	Output    string     `json:"-" gorm:"type:longtext"` // gzip+base64 compressed
+	Error     string     `json:"error" gorm:"type:text"` // 额外的系统错误信息
 	Status    string     `json:"status" gorm:"size:20"`  // success, failed
 	Duration  int64      `json:"duration"`               // milliseconds
 	ExitCode  int        `json:"exit_code"`

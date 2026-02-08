@@ -156,6 +156,7 @@ func (s *TaskLogService) CreateTaskLogFromAgentResult(result *models.AgentTaskRe
 		AgentID:  &result.AgentID,
 		Command:  result.Command,
 		Output:   compressed,
+		Error:    result.Error,
 		Status:   result.Status,
 		Duration: result.Duration,
 		ExitCode: result.ExitCode,
@@ -175,7 +176,7 @@ func (s *TaskLogService) CreateTaskLogFromAgentResult(result *models.AgentTaskRe
 }
 
 // CreateTaskLogFromLocalExecution 从本地执行结果创建任务日志
-func (s *TaskLogService) CreateTaskLogFromLocalExecution(taskID uint, command, output, status string, duration int64, exitCode int, start, end time.Time, isCompressed bool) (*models.TaskLog, error) {
+func (s *TaskLogService) CreateTaskLogFromLocalExecution(taskID uint, command, output, systemErr, status string, duration int64, exitCode int, start, end time.Time, isCompressed bool) (*models.TaskLog, error) {
 	var compressed string
 	var err error
 
@@ -197,6 +198,7 @@ func (s *TaskLogService) CreateTaskLogFromLocalExecution(taskID uint, command, o
 		TaskID:    taskID,
 		Command:   command,
 		Output:    compressed,
+		Error:     systemErr,
 		Status:    status,
 		Duration:  duration,
 		ExitCode:  exitCode,

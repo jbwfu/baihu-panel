@@ -340,6 +340,15 @@ watch(() => route.query.task_id, (newTaskId) => {
           </div>
         </div>
         <div class="flex-1 flex flex-col overflow-hidden">
+          <div v-if="selectedLog.error" class="px-4 py-3 border-b bg-red-500/5 space-y-2 text-sm">
+            <div class="flex items-center gap-2 text-red-500 font-medium">
+              <X class="h-4 w-4" />
+              <span>系统错误</span>
+            </div>
+            <code class="block font-mono bg-red-500/10 text-red-600 px-2 py-1 rounded text-xs break-all">
+              {{ selectedLog.error }}
+            </code>
+          </div>
           <div class="px-4 py-2 text-sm text-muted-foreground border-b bg-muted/50 flex items-center justify-between">
             <span>输出</span>
             <Button variant="ghost" size="icon" class="h-6 w-6" @click="showFullscreen = true" title="全屏查看">

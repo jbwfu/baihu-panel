@@ -81,6 +81,7 @@ type TaskResult struct {
 	AgentID   uint   `json:"agent_id"` // 仅用于 HTTP 上报时后端补充
 	Command   string `json:"command"`
 	Output    string `json:"output"`
+	Error     string `json:"error"`
 	Status    string `json:"status"`
 	Duration  int64  `json:"duration"`
 	ExitCode  int    `json:"exit_code"`
@@ -175,6 +176,7 @@ func (h *AgentHandler) OnTaskCompleted(req *executor.ExecutionRequest, result *e
 		LogID:     result.LogID,
 		Command:   req.Command,
 		Output:    result.Output,
+		Error:     result.Error,
 		Status:    result.Status,
 		Duration:  result.Duration,
 		ExitCode:  result.ExitCode,
@@ -203,7 +205,8 @@ func (h *AgentHandler) OnTaskFailed(req *executor.ExecutionRequest, err error) {
 		TaskID:    taskID,
 		LogID:     req.LogID,
 		Command:   req.Command,
-		Output:    errMsg,
+		Output:    "",
+		Error:     err.Error(),
 		Status:    "failed",
 		Duration:  0,
 		ExitCode:  1,

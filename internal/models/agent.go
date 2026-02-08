@@ -69,6 +69,7 @@ type AgentTaskResult struct {
 	AgentID   uint   `json:"agent_id"`
 	Command   string `json:"command"`
 	Output    string `json:"output"`
+	Error     string `json:"error"`    // 额外的系统错误信息
 	Status    string `json:"status"`   // success, failed
 	Duration  int64  `json:"duration"` // milliseconds
 	ExitCode  int    `json:"exit_code"`

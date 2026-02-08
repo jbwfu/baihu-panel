@@ -211,6 +211,7 @@ func (h *ServerSchedulerHandler) OnTaskCompleted(req *executor.ExecutionRequest,
 		TaskID:    task.ID,
 		Command:   req.Command,
 		Output:    output,
+		Error:     result.Error,
 		Status:    result.Status,
 		Duration:  result.Duration,
 		ExitCode:  result.ExitCode,
@@ -262,13 +263,16 @@ func (h *ServerSchedulerHandler) OnTaskFailed(req *executor.ExecutionRequest, er
 
 	now := models.LocalTime(time.Now())
 	taskLog := &models.TaskLog{
-		ID:       req.LogID,
-		TaskID:   taskID,
-		Output:   output,
-		Status:   "failed",
-		Duration: 0,
-		ExitCode: 1,
-		EndTime:  &now,
+		ID:        req.LogID,
+		TaskID:    taskID,
+		Command:   req.Command,
+		Output:    output,
+		Error:     err.Error(),
+		Status:    "failed",
+		Duration:  0,
+		ExitCode:  1,
+		StartTime: &now,
+		EndTime:   &now,
 	}
 
 	// 补充 AgentID
@@ -645,6 +649,7 @@ func (es *ExecutorService) ExecuteRemoteForScheduler(task *models.Task, logID ui
 	case agentResult := <-resultChan:
 		return &executor.Result{
 			Output:    agentResult.Output,
+			Error:     agentResult.Error,
 			Status:    agentResult.Status,
 			Duration:  agentResult.Duration,
 			ExitCode:  agentResult.ExitCode,
@@ -655,11 +660,12 @@ func (es *ExecutorService) ExecuteRemoteForScheduler(task *models.Task, logID ui
 		end := time.Now()
 		return &executor.Result{
 			Status:    "failed",
+			Error:     "等待 Agent 结果超时",
 			Duration:  end.Sub(start).Milliseconds(),
 			ExitCode:  -1,
 			StartTime: start,
 			EndTime:   end,
-		}, fmt.Errorf("远程执行超时")
+		}, fmt.Errorf("等待 Agent 结果超时")
 	}
 }
 
