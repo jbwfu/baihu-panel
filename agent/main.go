@@ -99,9 +99,15 @@ func main() {
 }
 
 func printUsage() {
+	var binName = filepath.Base(os.Args[0])
+	if binName == "main" || binName == "debug" {
+		binName = "baihu-agent"
+	}
+
 	fmt.Printf(`Baihu Agent v%s
 
-用法: baihu-agent <命令> [选项]
+用法:
+  %s <命令> [选项]
 
 命令:
   start       启动 Agent（后台运行）
@@ -120,14 +126,15 @@ func printUsage() {
   -l, --log <file>      日志文件路径 (默认: logs/agent.log)
 
 示例:
-  baihu-agent start
-  baihu-agent run
-  baihu-agent logs
-  baihu-agent start -c /etc/baihu/config.ini
-  baihu-agent install
-  baihu-agent status
-  baihu-agent tasks
-`, Version)
+  %s start
+  %s run
+  %s stop
+  %s logs
+  %s start -c /etc/baihu/config.ini
+  %s install
+  %s status
+  %s tasks
+`, Version, binName, binName, binName, binName, binName, binName, binName, binName, binName)
 }
 
 // daemon 模式标记

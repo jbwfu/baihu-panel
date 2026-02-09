@@ -166,7 +166,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=%s
-ExecStart=%s start
+ExecStart=%s run
 Restart=always
 RestartSec=5
 
@@ -213,7 +213,7 @@ func uninstallLinux() {
 func installWindows(exePath, exeDir string) {
 	// 使用 sc.exe 创建服务
 	cmd := exec.Command("sc", "create", ServiceName,
-		"binPath=", fmt.Sprintf(`"%s" start`, exePath),
+		"binPath=", fmt.Sprintf(`"%s" run`, exePath),
 		"start=", "auto",
 		"DisplayName=", ServiceDesc)
 
