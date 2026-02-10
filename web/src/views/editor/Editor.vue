@@ -397,17 +397,25 @@ async function initFromUrl() {
   }
 }
 
+function handleGlobalKeydown(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    if (isEditMode.value && selectedFile.value) {
+      e.preventDefault()
+      saveFile()
+    }
+  }
+}
+
 onMounted(() => {
   initFromUrl()
   fetchPaths()
-})
-
-onMounted(() => {
   window.addEventListener('resize', handleResize)
+  window.addEventListener('keydown', handleGlobalKeydown)
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('keydown', handleGlobalKeydown)
 })
 </script>
 
